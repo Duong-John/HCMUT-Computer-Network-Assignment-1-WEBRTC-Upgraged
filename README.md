@@ -35,3 +35,6 @@ I would like to express my sincere gratitude to the original author for providin
 4. Depending on the number of servers in ```/config/proxy.conf```, you will start the same number of servers. For example, if 2 servers are included and their port are 8000 and 8001, type in ```python start_proxy.py -server-port 8000``` and ```python start_proxy.py -server-port 8001``` respectively.
 
 > **Note**: There will be an update for this project
+
+## Demo Video
+[![Demo Video](static/images/Chat_Thumbnail.png)](https://www.youtube.com/watch?v=ADR8qkTgHEc)

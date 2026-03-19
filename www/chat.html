@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WebRTC Chat P2P</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* Ovveride Css for chat.html */
+    .chat-container {
+      width: 900px;
+      max-width: 95%;
+      margin: 30px auto;
+      background: rgba(255, 255, 255, 0.95);
+      border: 3px solid #FF6B6B;
+      border-radius: 20px;
+      padding: 25px;
+      display: flex;
+      flex-direction: column;
+      height: 85vh;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    .status-bar {
+        padding: 12px;
+        background: #fffaf0;
+        border: 1px solid #FFE4C4;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        font-size: 1em;
+        font-weight: bold;
+        color: #FF6B6B;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .voice-controls {
+        display: flex;
+        gap: 15px;
+    }
+
+    /* Đổi nút Voice thành hình Icon tròn */
+    .icon-btn {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .icon-btn:hover {
+        transform: scale(1.1);
+    }
+    #voiceBtn {
+        background: #FFD700; /* Vàng */
+        color: #333;
+    }
+    #endCallBtn {
+        background: #FF6B6B; /* Đỏ hồng */
+        color: white;
+    }
+
+    .messages {
+      flex-grow: 1;
+      overflow-y: auto;
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 15px;
+    }
+    
+    .msg {
+      padding: 12px 18px;
+      border-radius: 18px;
+      max-width: 70%;
+      word-wrap: break-word;
+      font-size: 1.05rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .msg.me {
+      background: #FF6B6B;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.other {
+      background: #FFE4C4;
+      color: #333;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .msg.system {
+        background: transparent;
+        color: #888;
+        align-self: center;
+        font-size: 0.85em;
+        box-shadow: none;
+        font-weight: bold;
+    }
+    
+    .input-area {
+      display: flex;
+      gap: 15px;
+      background: #fffaf0;
+      padding: 15px;
+      border-radius: 15px;
+      border: 1px solid #FFE4C4;
+    }
+    .input-area input {
+      flex-grow: 1;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      outline: none;
+      font-size: 1rem;
+    }
+    .input-area input:focus {
+        border-color: #FFD700;
+    }
+    .input-area button {
+      background: #FF6B6B;
+      border: none;
+      color: white;
+      padding: 10px 25px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+    .input-area button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="chat-container">
+    
+    <div class="status-bar">
+        <div>
+            Status: <span id="connection-status" style="color: #333;">Disconnected</span> | 
+            Chatting with: <span id="chat-target" style="color: #333;">...</span>
+        </div>
+        <div class="voice-controls">
+            <button id="voiceBtn" class="icon-btn" style="display: none;" title="Start Voice Call">🎤</button>
+            <button id="endCallBtn" class="icon-btn" style="display: none;" title="End Call">📴</button>
+            <audio id="remoteAudio" autoplay></audio>
+        </div>
+    </div>
+
+    <div class="messages" id="messages"></div>
+    
+    <div class="input-area">
+      <input type="text" id="messageInput" placeholder="Waiting for connection..." disabled>
+      <button id="sendBtn" disabled>Send</button>
+    </div>
+
+    <div style="margin-top: 15px; text-align: right;">
+        <button id="connectBtn" class="btn test">Connect P2P</button>
+    </div>
+  </div>
+
+<script>
+    let iceConfig = null;
+    let peerConnection = null;
+    let dataChannel = null;
+    let targetUser = null;
+    let signalingInterval = null;
+    let candidateQueue = []; 
+    let callTimeout = null; 
+
+    const statusLabel = document.getElementById('connection-status');
+    const targetLabel = document.getElementById('chat-target');
+    const messagesDiv = document.getElementById('messages');
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const connectBtn = document.getElementById('connectBtn');
+
+    let localStream = null;
+    const voiceBtn = document.getElementById('voiceBtn');
+    const endCallBtn = document.getElementById('endCallBtn');
+    const remoteAudio = document.getElementById('remoteAudio');
+
+    async function fetchIceConfig() {
+        try {
+            const res = await fetch('/get_ice_config', { credentials: 'include' });
+            if (!res.ok) throw new Error("Unauthorized");
+            iceConfig = await res.json();
+            return true;
+        } catch (err) {
+            console.error("Failed to fetch ICE config", err);
+            return false;
+        }
+    }
+
+    async function initializeParams() {
+      let params = window._QUERY_STRING ? new URLSearchParams(window._QUERY_STRING) : new URLSearchParams(window.location.search);
+      targetUser = params.get('target');
+      targetLabel.textContent = targetUser;
+      
+      if (!targetUser) {
+        appendMessage('system', 'Error: No target user specified.');
+        connectBtn.style.display = 'none';
+        return;
+      }
+      
+      const hasConfig = await fetchIceConfig();
+      if (!hasConfig) {
+          appendMessage('system', 'Error: Could not load network configuration. Please login again.');
+          connectBtn.style.display = 'none';
+          return;
+      }
+
+      startSignalingPolling();
+
+      (async () => {
+          const pendingStr = sessionStorage.getItem('pendingSignals');
+          if (pendingStr) {
+              sessionStorage.removeItem('pendingSignals'); 
+              const signals = JSON.parse(pendingStr);
+              for (const sig of signals) {
+                  if (sig.sender === targetUser) {
+                      await handleIncomingSignal(sig); 
+                  }
+              }
+          }
+      })();
+    }
+
+    function appendMessage(who, text) {
+      const msg = document.createElement('div');
+      msg.className = `msg ${who}`;
+      msg.textContent = text;
+      messagesDiv.appendChild(msg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    
+    async function sendSignal(type, data) {
+        try {
+            await fetch('/send_signal', {
+                method: 'POST', credentials: 'include', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: targetUser, type: type, data: data })
+            });
+        } catch (e) { console.error("Send signal failed", e); }
+    }
+
+    function startSignalingPolling() {
+        signalingInterval = setInterval(async () => {
+            try {
+                const res = await fetch('/get_signal', { credentials: 'include' });
+                const signals = await res.json();
+                if (signals && signals.length > 0) {
+                    for (const signal of signals) {
+                        await handleIncomingSignal(signal); 
+                    }
+                }
+            } catch (e) {}
+        }, 2000); 
+    }
+
+    async function handleIncomingSignal(signal) {
+        if (!peerConnection) createPeerConnection();
+        const data = signal.data;
+
+        try {
+            if (signal.type === 'offer') {
+                statusLabel.textContent = "Receiving connection...";
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+                
+                while (candidateQueue.length > 0) {
+                    const cand = candidateQueue.shift();
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+                }
+
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                sendSignal('answer', answer);
+
+            } else if (signal.type === 'answer') {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+                
+            } else if (signal.type === 'candidate') {
+                if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                } else {
+                    candidateQueue.push(data);
+                }
+            }
+        } catch (err) {}
+    }
+
+    function createPeerConnection() {
+        if (peerConnection) return;
+        peerConnection = new RTCPeerConnection(iceConfig);
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) sendSignal('candidate', event.candidate);
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+            const state = peerConnection.connectionState;
+            statusLabel.textContent = state.toUpperCase();
+            
+            if (state === 'connected') {
+                if (callTimeout) clearTimeout(callTimeout); 
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.placeholder = "Type a message...";
+                connectBtn.style.display = 'none'; 
+                voiceBtn.style.display = 'flex'; // Hiển thị nút Micro
+                appendMessage('system', 'P2P Connection Established!');
+                
+            } else if (state === 'disconnected' || state === 'failed') {
+                input.disabled = true;
+                sendBtn.disabled = true;
+                appendMessage('system', 'Connection lost or failed.');
+                connectBtn.style.display = 'inline-block';
+                connectBtn.textContent = 'Reconnect P2P';
+                voiceBtn.style.display = 'none';
+                endCallBtn.style.display = 'none';
+            }
+        };
+
+        peerConnection.ondatachannel = (event) => { setupDataChannel(event.channel); };
+        peerConnection.ontrack = (event) => { remoteAudio.srcObject = event.streams[0]; };
+    }
+
+    function setupDataChannel(channel) {
+        dataChannel = channel;
+        dataChannel.onopen = () => { statusLabel.textContent = "CONNECTED (P2P)"; };
+        dataChannel.onmessage = (event) => { appendMessage('other', event.data); };
+    }
+
+    connectBtn.addEventListener('click', async () => {
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+            dataChannel = null;
+        }
+
+        createPeerConnection();
+        dataChannel = peerConnection.createDataChannel("chat");
+        setupDataChannel(dataChannel);
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        statusLabel.textContent = "Calling...";
+        connectBtn.style.display = 'none'; 
+        sendSignal('offer', offer);
+
+        if (callTimeout) clearTimeout(callTimeout);
+        callTimeout = setTimeout(() => {
+            if (peerConnection && peerConnection.connectionState !== 'connected') {
+                appendMessage('system', 'Call timed out. No response from target.');
+                statusLabel.textContent = "FAILED";
+                peerConnection.close();
+                peerConnection = null;
+                
+                connectBtn.style.display = 'inline-block';
+                connectBtn.textContent = 'Retry Connection';
+            }
+        }, 15000);
+    });
+
+    sendBtn.addEventListener('click', () => {
+        const text = input.value.trim();
+        if (!text || !dataChannel || dataChannel.readyState !== 'open') return;
+        dataChannel.send(text);
+        appendMessage('me', text);
+        input.value = '';
+    });
+    
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendBtn.click(); });
+
+    voiceBtn.addEventListener('click', async () => {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            localStream.getTracks().forEach(track => { peerConnection.addTrack(track, localStream); });
+            appendMessage('system', 'Microphone enabled. Negotiating connection...');
+            voiceBtn.style.display = 'none';
+            endCallBtn.style.display = 'flex';
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            sendSignal('offer', offer);
+        } catch (err) {
+            appendMessage('system', 'Error: Could not access microphone.');
+        }
+    });
+
+    endCallBtn.addEventListener('click', () => {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        appendMessage('system', 'Call ended.');
+        voiceBtn.style.display = 'flex';
+        endCallBtn.style.display = 'none';
+    });
+    
+    setInterval(async () => {
+          try {
+              await fetch('/heartbeat', {
+                  method: 'POST', credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+              });
+          } catch (e) {}
+    }, 5000);
+
+    document.addEventListener('DOMContentLoaded', initializeParams);
+  </script>
+</body>
+</html>

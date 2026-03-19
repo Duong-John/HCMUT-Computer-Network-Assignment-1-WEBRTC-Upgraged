@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Active Peers | P2P Chat</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .peer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .peer-card {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: #fffaf0;
+      border: 1px solid #FFE4C4;
+      border-radius: 12px;
+      padding: 12px 18px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      transition: all 0.2s ease;
+      cursor: pointer; 
+    }
+    .peer-card:hover {
+      transform: translateY(-3px);
+      background: #fff;
+      border-color: #FF6B6B;
+      box-shadow: 0 8px 15px rgba(255, 107, 107, 0.15);
+    }
+    .peer-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FFD700, #FF6B6B);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.4rem;
+      color: #fff;
+      box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+    }
+    .peer-info {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+    .peer-name {
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #333;
+    }
+    .peer-status {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .peer-status.online {
+        color: #4caf50;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Active Peers</h1>
+    <p>Select a user to start a P2P WebRTC Chat.</p>
+
+    <div id="peerList" class="peer-list">
+      <p style="color: #888;">Loading peers...</p>
+    </div>
+    
+    <button onclick="window.location.href='/index.html'" class="btn return">Return Home</button>
+  </div>
+
+  <div id="callNotification" onclick="answerCall()" style="display: none; position: fixed; bottom: 30px; right: 30px; background: rgba(255, 107, 107, 0.95); padding: 20px 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 1000; border: 2px solid #FFD700; cursor: pointer; transition: transform 0.2s;">
+    <p style="margin: 0; font-weight: bold; color: white; font-size: 1.2em;" id="callerNameText">Incoming call...</p>
+    <p style="margin: 8px 0 0 0; font-size: 0.9em; color: #FFE4C4;">Click here to join chat</p>
+  </div>
+
+  <script>
+    let pendingCaller = null;
+    window.addEventListener('pageshow', () => {
+        document.getElementById('callNotification').style.display = 'none';
+        pendingCaller = null;
+    });
+
+    async function loadPeers() {
+      try {
+        const response = await fetch(`/peers`, { method: 'GET', credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+        const data = await response.json();
+        const container = document.getElementById('peerList');
+        container.innerHTML = ''; 
+
+        const peers = Object.entries(data);
+        if (peers.length === 0) {
+          container.innerHTML = '<p>No other active peers found.</p>';
+          return;
+        }
+
+        peers.forEach(([name, info]) => {
+          const card = document.createElement('div');
+          card.className = 'peer-card';
+          card.innerHTML = `
+            <div class="peer-avatar">${name[0].toUpperCase()}</div>
+            <div class="peer-info">
+              <span class="peer-name">${name}</span>
+              <span class="peer-status online">● Online</span>
+            </div>
+          `;
+          card.addEventListener('click', () => {
+              window.location.href = `/chat.html?target=${encodeURIComponent(name)}`;
+          });
+          container.appendChild(card);
+        });
+      } catch (err) {}
+    }
+
+    async function sendHeartbeat() {
+        try {
+            await fetch('/heartbeat', {
+                method: 'POST', credentials: 'include', 
+                headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+            });
+        } catch (e) {}
+    }
+
+    let pendingCallSignals = null;
+    async function pollForIncomingCalls() {
+        if (document.getElementById('callNotification').style.display === 'block') return;
+
+        try {
+            const res = await fetch('/get_signal', { credentials: 'include' });
+            const signals = await res.json();
+            
+            if (signals && signals.length > 0) {
+                const offerSignal = signals.find(s => s.type === 'offer');
+                if (offerSignal) {
+                    pendingCaller = offerSignal.sender;
+                    pendingCallSignals = signals; 
+                    
+                    document.getElementById('callerNameText').textContent = `Call from ${pendingCaller}`;
+                    document.getElementById('callNotification').style.display = 'block';
+
+                    setTimeout(() => {
+                        document.getElementById('callNotification').style.display = 'none';
+                    }, 12000);
+                }
+            }
+        } catch (e) {}
+    }
+
+    function answerCall() {
+        if (pendingCaller) {
+            window.location.href = `/chat.html?target=${encodeURIComponent(pendingCaller)}`;
+        }
+    }
+
+    setInterval(loadPeers, 5000);
+    setInterval(sendHeartbeat, 5000);
+    setInterval(pollForIncomingCalls, 3000);
+
+    window.addEventListener('DOMContentLoaded', loadPeers);
+    sendHeartbeat();
+  </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HCMUT Expression Chat</title>
+  <link rel="stylesheet" href="css/styles.css?v=1.9">
+</head>
+
+<body class="landing-page">
+
+  <nav class="navbar">
+    <div class="nav-left">
+      <img src="images/welcome.png" alt="Logo" class="nav-logo">
+      <a href="/peer_list.html">Chat</a>
+      <a href="#">Contact</a>
+    </div>
+    <div class="nav-right" id="navAuth">
+      <a href="/login.html"><button class="btn nav-btn">Login</button></a>
+      <a href="/register.html"><button class="btn nav-btn register">Register</button></a>
+    </div>
+  </nav>
+
+  <header class="hero-section">
+    <div class="hero-box">
+      <h2>P2P Chatting</h2>
+      <p>Connect securely, explore freely, and express yourself directly with your peers using our cutting-edge WebRTC technology.</p>
+      <button class="btn test" style="font-size: 1.2rem; padding: 15px 40px;" onclick="window.location.href='/peer_list.html'">Try Now</button>
+    </div>
+  </header>
+
+  <div id="callNotification" onclick="answerCall()" style="display: none; position: fixed; bottom: 30px; right: 30px; background: rgba(255, 107, 107, 0.95); padding: 20px 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 1000; border: 2px solid #FFD700; cursor: pointer; transition: transform 0.2s;">
+    <p style="margin: 0; font-weight: bold; color: white; font-size: 1.2em;" id="callerNameText">Incoming call...</p>
+    <p style="margin: 8px 0 0 0; font-size: 0.9em; color: #FFE4C4;">Click here to join chat</p>
+  </div>
+
+  <script>
+    let pendingCaller = null;
+
+    window.addEventListener('pageshow', () => {
+        document.getElementById('callNotification').style.display = 'none';
+        pendingCaller = null;
+    });
+
+    async function sendHeartbeat() {
+        try {
+            await fetch('/heartbeat', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+            });
+        } catch (e) {}
+    }
+
+    async function pollForIncomingCalls() {
+        if (document.getElementById('callNotification').style.display === 'block') return;
+
+        try {
+            const res = await fetch('/get_signal', { credentials: 'include' });
+            const signals = await res.json();
+            
+            if (signals && signals.length > 0) {
+                const offerSignal = signals.find(s => s.type === 'offer');
+                if (offerSignal) {
+                    pendingCaller = offerSignal.sender;
+                    sessionStorage.setItem('pendingSignals', JSON.stringify(signals));
+                    
+                    document.getElementById('callerNameText').textContent = `Call from ${pendingCaller}`;
+                    document.getElementById('callNotification').style.display = 'block';
+
+                    setTimeout(() => {
+                        document.getElementById('callNotification').style.display = 'none';
+                    }, 12000);
+                }
+            }
+        } catch (e) {}
+    }
+
+    function answerCall() {
+        if (pendingCaller) {
+            window.location.href = `/chat.html?target=${encodeURIComponent(pendingCaller)}`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        if (document.cookie && document.cookie.trim() !== "") {
+            document.getElementById('navAuth').style.display = 'none';
+
+            sendHeartbeat();
+            setInterval(sendHeartbeat, 5000);
+            setInterval(pollForIncomingCalls, 3000);
+        }
+    });
+  </script>
+</body>
+</html>

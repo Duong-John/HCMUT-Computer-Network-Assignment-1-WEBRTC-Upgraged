@@ -1,0 +1,226 @@
+/* Humand Skin (#FFE4C4), Yellow (#FFD700), Pinkish Read (#FF6B6B) */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+  background: linear-gradient(135deg, #FFE4C4, #FFD700, #FF6B6B);
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-attachment: fixed;
+}
+
+/* Container for general */
+.container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 40px 60px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  max-width: 650px;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+h1 {
+  font-size: 2.2em;
+  color: #FF6B6B;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+p {
+  color: #555;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.welcome-img {
+  max-width: 100%;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.2);
+}
+
+/*Button */
+.button-group {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 14px 30px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 7px 14px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Phối màu nút */
+.btn.register, .btn.login, .btn.test, .btn.return {
+  background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+  color: white;
+}
+
+/* Form Styles - Rộng rãi, góc bo tròn */
+.auth-form {
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+  text-align: left;
+}
+
+.form-row {
+  display: flex; 
+  gap: 20px; 
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column; 
+  flex: 1; 
+}
+
+.auth-form label {
+  margin-bottom: 8px; 
+  font-weight: 600;
+  color: #FF6B6B;
+}
+
+.auth-form input[type="text"],
+.auth-form input[type="password"] {
+  width: 100%;
+  box-sizing: border-box; 
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: 2px solid #FFE4C4;
+  background-color: #fffaf0;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.auth-form input[type="text"]:focus,
+.auth-form input[type="password"]:focus {
+  border-color: #FF6B6B;
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.2);
+}
+
+.auth-form .btn {
+  margin-top: 15px;
+  width: 100%;
+}
+
+.small-text {
+  margin-top: 20px;
+  font-size: 0.9em;
+}
+
+.small-text a {
+  color: #FF6B6B;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.small-text a:hover {
+  text-decoration: underline;
+}
+
+/* --- LANDING PAGE (index.html) STYLES --- */
+body.landing-page {
+  display: block;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 50px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.nav-logo {
+  height: 40px;
+  border-radius: 8px;
+}
+
+.nav-left a {
+  text-decoration: none;
+  color: #333;
+  font-weight: bold;
+  font-size: 1.1em;
+  transition: color 0.2s;
+}
+
+.nav-left a:hover {
+  color: #FF6B6B;
+}
+
+.nav-right {
+  display: flex;
+  gap: 15px;
+}
+
+.nav-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.hero-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 75px);
+
+  background: linear-gradient(rgba(255, 228, 196, 0.6), rgba(255, 107, 107, 0.6)), url('/images/23455.jpeg') center/cover no-repeat;
+}
+
+.hero-box {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 60px 80px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+  max-width: 600px;
+  border: 2px solid #FFD700;
+}
+
+.hero-box h2 {
+  font-size: 3em;
+  color: #FF6B6B;
+  margin: 0 0 20px 0;
+}
+
+.hero-box p {
+  font-size: 1.2em;
+  color: #555;
+  margin-bottom: 40px;
+}

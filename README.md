@@ -1,3 +1,6 @@
+![Version](https://img.shields.io/badge/Computer_Networking-WebRTC_WebSocket-blue.svg)
+![Status](https://img.shields.io/badge/Status-Done-brightgreen.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D6.svg)
 # WebRTC P2P Chat - WeApRous Framework
 
 This project is an advanced, WebRTC-integrated evolution of my previous coursework assignment: [https://github.com/Duong-John/K251_MMT]. 
